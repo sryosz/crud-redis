@@ -32,7 +32,7 @@ func New(log *slog.Logger) *Redis {
 	}
 }
 
-func userIDKey(id int64) string {
+func userIDKey(id int32) string {
 	return fmt.Sprintf("user:%d", id)
 }
 
@@ -46,7 +46,7 @@ func (r *Redis) Insert(user models.User) error {
 		return err
 	}
 
-	key := userIDKey(user.ID)
+	key := userIDKey(int32(user.ID))
 
 	txn := r.Client.TxPipeline()
 
@@ -57,7 +57,7 @@ func (r *Redis) Insert(user models.User) error {
 		return err
 	}
 
-	if err = txn.SAdd("orders", key).Err(); err != nil {
+	if err = txn.SAdd("users", key).Err(); err != nil {
 		txn.Discard()
 		log.Error("Failed to add to set", "error", err)
 		return err
@@ -71,9 +71,9 @@ func (r *Redis) Insert(user models.User) error {
 	return nil
 }
 
-var ErrNoExist error = errors.New("user does not exist")
+var ErrNoExist = errors.New("user does not exist")
 
-func (r *Redis) FindById(id int64) (models.User, error) {
+func (r *Redis) FindById(id int32) (models.User, error) {
 	log := r.log.With("op", "redis.FindById")
 
 	key := userIDKey(id)
@@ -95,4 +95,29 @@ func (r *Redis) FindById(id int64) (models.User, error) {
 	}
 
 	return user, nil
+}
+
+func (r *Redis) DeleteById(id int32) error {
+	log := r.log.With("op", "redis.DeleteById")
+
+	key := userIDKey(id)
+
+	txn := r.Client.TxPipeline()
+
+	err := txn.Del(key).Err()
+	if errors.Is(err, redis.Nil) {
+		log.Error("User does not exist", "error", ErrNoExist)
+		return ErrNoExist
+	} else if err != nil {
+		log.Error("Failed to delete user", "error", err)
+		return err
+	}
+
+	if err = txn.SRem("users", key).Err(); err != nil {
+		txn.Discard()
+		log.Error("Failed to remove from users set", "error", err)
+		return err
+	}
+
+	return nil
 }
