@@ -28,8 +28,7 @@ func NewServer(log *slog.Logger) *Server {
 func (s *Server) RegisterRoutes() {
 	s.GET("/user/:id", s.getUserById)
 	s.POST("/user", s.createUser)
-	//s.GET("/users", s.getUsers)
-	//s.DELETE("/user/:id", s.deleteUser)
+	s.DELETE("/user/:id", s.deleteUser)
 }
 
 func (s *Server) getUserById(ctx *gin.Context) {
@@ -40,7 +39,7 @@ func (s *Server) getUserById(ctx *gin.Context) {
 		ctx.AbortWithStatus(http.StatusBadRequest)
 	}
 
-	user, err := s.service.GetUserById(id)
+	user, err := s.service.GetUserById(int32(id))
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusNotFound)
 		return
@@ -66,5 +65,22 @@ func (s *Server) createUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	ctx.JSON(http.StatusCreated, user)
+}
+
+func (s *Server) deleteUser(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusBadRequest)
+	}
+
+	user, err := s.service.DeleteUserById(int32(id))
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &user)
 }
