@@ -19,8 +19,6 @@ type Service struct {
 }
 
 func NewService(log *slog.Logger) *Service {
-	const op = "lib.service.NewService"
-
 	return &Service{
 		log:     log,
 		Storage: storage.New(log),
@@ -28,16 +26,15 @@ func NewService(log *slog.Logger) *Service {
 	}
 }
 
-func (s *Service) GetUserById(id int) (*postgres.User, error) {
-	const op = "lib.service.GetCustomers"
-	log := s.log.With("op", op)
+func (s *Service) GetUserById(id int32) (*postgres.User, error) {
+	log := s.log.With("op", "lib.service.GetUserById")
 
-	user, err := s.Redis.FindById(int64(id))
+	user, err := s.Redis.FindById(id)
 	if errors.Is(err, redis.ErrNoExist) {
-		log.Error("User was not found at redis", "error", err)
-		u, err := s.Storage.GetUserByID(context.Background(), int32(id))
+		log.Info("User was not found at redis", "error", err)
+		u, err := s.Storage.GetUserByID(context.Background(), id)
 		if err != nil {
-			log.Error("Failed to get user", "error", err)
+			log.Error("Failed to get user from db", "error", err)
 			return nil, err
 		}
 		log.Info("Successfully got user from db")
@@ -57,8 +54,7 @@ func (s *Service) GetUserById(id int) (*postgres.User, error) {
 }
 
 func (s *Service) CreateUser(email, password string) (*postgres.User, error) {
-	const op = "lib.service.GetCustomers"
-	log := s.log.With("op", op)
+	log := s.log.With("op", "lib.service.CreateUser")
 
 	pass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -95,4 +91,22 @@ func (s *Service) CreateUser(email, password string) (*postgres.User, error) {
 	log.Info("Successfully created user")
 
 	return &user, nil
+}
+
+func (s *Service) DeleteUserById(id int32) (int32, error) {
+	log := s.log.With("op", "lib.service.DeleteUserById")
+
+	err := s.Redis.DeleteById(id)
+	if err != nil {
+		log.Error("Failed to delete user from redis", "error", err)
+		return 0, err
+	}
+
+	err = s.Storage.DeleteUser(context.Background(), id)
+	if err != nil {
+		log.Error("Failed to delete user from db", "error", err)
+		return 0, err
+	}
+
+	return id, nil
 }
