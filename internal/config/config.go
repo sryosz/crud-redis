@@ -3,12 +3,13 @@ package config
 import "github.com/ilyakaznacheev/cleanenv"
 
 type Config struct {
-	Http httpConfig
-	DB   dbConfig
+	Http  httpConfig
+	DB    dbConfig
+	Redis redisConfig
 }
 
 type httpConfig struct {
-	Port uint16 `yaml:"http_port" env-default:"8000"`
+	Port uint16 `env:"HTTP_PORT" env-default:"8000"`
 }
 
 type dbConfig struct {
@@ -21,6 +22,12 @@ type dbConfig struct {
 	MinConns        int32  `env:"DB_MIN_CONNS"          env-default:"1"`
 	MaxConnLifetime int64  `env:"DB_MAX_CONN_LIFETIME"  env-default:"3600000000000"`
 	MaxConnIdleTime int64  `env:"DB_MAX_CONN_IDLE_TIME" env-default:"1800000000000"`
+}
+
+type redisConfig struct {
+	Host     string `env:"REDIS_HOST"     env-default:"redis"`
+	Port     string `env:"REDIS_PORT"     env-default:"6379"`
+	Password string `env:"REDIS_PASSWORD" env-default:"redis"`
 }
 
 func MustLoad() *Config {
