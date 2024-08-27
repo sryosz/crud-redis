@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	"log/slog"
+	"microservice-redis/internal/config"
 	"microservice-redis/internal/models"
 )
 
@@ -15,10 +16,11 @@ type Redis struct {
 }
 
 func New(log *slog.Logger) *Redis {
+	cfg := config.MustLoad().Redis
+
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
+		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+		Password: cfg.Password,
 	})
 
 	err := client.Ping().Err()
